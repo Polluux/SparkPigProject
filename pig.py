@@ -7,24 +7,16 @@ from org.apache.pig.scripting import *
 
 
 P =  Pig.compile("""
--- PR(A) = (1-d) + d (PR(T1)/C(T1) + ... + PR(Tn)/C(Tn));
-initial_pagerank = LOAD '$docs_in' USING PigStorage(';') AS ( url: chararray, pagerank: float, links:{ link: ( url: chararray ) } );
+links = LOAD '$docs_in' USING PigStorage(' ') AS ( from : chararray,  url : chararray);
+r1 = group links by from;
+r2 = foreach r1 generate group as from, links as url;
+initial_pagerank = foreach r2 generate from as url, 1.0f as pagerank, url.url as links;
 
 DEFINE my_macro(previous_pagerank) RETURNS new_pagerank {
 
-	outbound_pagerank =
-	FOREACH $previous_pagerank
-	GENERATE
-	pagerank / COUNT ( links ) AS pagerank,
-	FLATTEN ( links ) AS to_url;
+	outbound_pagerank = FOREACH $previous_pagerank GENERATE pagerank / COUNT ( links ) AS pagerank, FLATTEN ( links ) AS to_url;
 
-	$new_pagerank =
-	FOREACH
-	( COGROUP outbound_pagerank BY to_url, $previous_pagerank BY url INNER )
-	GENERATE
-	group AS url,
-	( 1 - $df ) + $df * SUM ( outbound_pagerank.pagerank ) AS pagerank,
-	FLATTEN ( $previous_pagerank.links ) AS links;
+	$new_pagerank = FOREACH ( COGROUP outbound_pagerank BY to_url, $previous_pagerank BY url INNER ) GENERATE group AS url, ( 1 - $df ) + $df * SUM ( outbound_pagerank.pagerank ) AS pagerank, FLATTEN ( $previous_pagerank.links ) AS links;
 }
 
 
@@ -56,7 +48,7 @@ USING PigStorage(';');
 DUMP Ite20;
 """)
 
-params = { 'df': '0.85', 'docs_in': 'pigs_urls.txt', 'docs_out' : 'out' }
+params = { 'df': '0.85', 'docs_in': 'urls.txt', 'docs_out' : 'out' }
 
 stats = P.bind(params).runSingle()
 if not stats.isSuccessful():
