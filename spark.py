@@ -49,9 +49,10 @@ for iteration in range(iterations):
     # Re-calculates URL ranks based on neighbor contributions.
     ranks = contribs.reduceByKey(add).mapValues(lambda rank: (1-DF)+(DF*rank))
 
+
 # Collects all URL ranks and dump them to console.
 print("=============RESULTS============")
-for (link, rank) in ranks.collect():
+for (link, rank) in sorted(ranks.collect()):
     print("%s has rank: %s." % (link, rank))
 print("================================")
 
