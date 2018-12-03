@@ -1,5 +1,6 @@
 from operator import add
 import re
+import time
 
 from pyspark.sql import SparkSession
 
@@ -15,6 +16,7 @@ def map(id,rank,links):
 	for link_id in links:
 		yield(link_id, rank/len(links))
 
+startTime = time.time()
 
 
 spark = SparkSession\
@@ -52,5 +54,8 @@ print("=============RESULTS============")
 for (link, rank) in ranks.collect():
     print("%s has rank: %s." % (link, rank))
 print("================================")
+
+endTime = time.time()-startTime
+print("Execution duration : %s seconds" % (endTime))
 
 spark.stop()
