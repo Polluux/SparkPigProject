@@ -3,24 +3,17 @@ import re
 
 from pyspark.sql import SparkSession
 
+# A part of this code come from here : https://github.com/apache/spark/blob/master/examples/src/main/python/pagerank.py
 
 DF = 0.85
 
 def parseNeighbors(urls):
-    """Parses a urls pair string into urls pair."""
-    parts = re.split(r'\s+', urls)
-    return parts[0], parts[1]
+    res = re.split(r'\s+', urls)
+    return res[0], res[1]
 
 def map(id,rank,links):
 	for link_id in links:
 		yield(link_id, rank/len(links))
-
-def reduce(id,ranks): #TO USE
-	pagerank = 0
-	for rank in ranks:
-		pagerank += rank
-	pagerank = (1 - DF) + (DF * pagerank)
-	yield(id,pagerank)
 
 
 
@@ -29,11 +22,13 @@ spark = SparkSession\
         .appName("SparkProject")\
         .getOrCreate()
 
+spark.sparkContext.setLogLevel('ERROR') #Remove if you want to see ALL infos in the console
 
-urls = "/home/polluux/Documents/Boulot/M2/Molli/urls.txt"
+
+urls = "./urls.txt"
 
 iterations = 20
-    
+
 
 lines = spark.read.text(urls).rdd.map(lambda r: r[0])
 
@@ -48,13 +43,14 @@ for iteration in range(iterations):
     # Calculates URL contributions to the rank of other URLs.
     contribs = links.join(ranks).flatMap(
     	lambda rdd1: map(rdd1[0],rdd1[1][1],rdd1[1][0]) )
-        #lambda url_urls_rank: computeContribs(url_urls_rank[1][0], url_urls_rank[1][1]))
 
     # Re-calculates URL ranks based on neighbor contributions.
-    ranks = contribs.reduceByKey(add).mapValues(lambda rank: rank * 0.85 + 0.15)
+    ranks = contribs.reduceByKey(add).mapValues(lambda rank: (1-DF)+(DF*rank))
 
 # Collects all URL ranks and dump them to console.
+print("=============RESULTS============")
 for (link, rank) in ranks.collect():
     print("%s has rank: %s." % (link, rank))
+print("================================")
 
 spark.stop()
